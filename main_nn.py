@@ -49,7 +49,7 @@ if __name__ == '__main__':
         dataset_train = datasets.MNIST('./data/mnist/', train=True, download=True,
                    transform=transforms.Compose([
                        transforms.ToTensor(),
-                       transforms.Normalize((0.1307,), (0.3081,))
+                       transforms.Normalize((0.1307,), (0.3081,)) #标准化，传入分别为mean均值 std标准差，计算好的
                    ]))
         img_size = dataset_train[0][0].shape
     elif args.dataset == 'cifar':
@@ -76,20 +76,20 @@ if __name__ == '__main__':
     print(net_glob)
 
     # training
-    optimizer = optim.SGD(net_glob.parameters(), lr=args.lr, momentum=args.momentum)
+    optimizer = optim.SGD(net_glob.parameters(), lr=args.lr, momentum=args.momentum) #构造优化器 学习率
     train_loader = DataLoader(dataset_train, batch_size=64, shuffle=True)
 
     list_loss = []
-    net_glob.train()
+    net_glob.train() #表示开始训练
     for epoch in range(args.epochs):
         batch_loss = []
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(args.device), target.to(args.device)
-            optimizer.zero_grad()
-            output = net_glob(data)
-            loss = F.cross_entropy(output, target)
-            loss.backward()
-            optimizer.step()
+            optimizer.zero_grad()    #优化器模型 梯度清零
+            output = net_glob(data)   #经过模型得到的输出
+            loss = F.cross_entropy(output, target) #计算交叉熵损失
+            loss.backward()   #反向传播，计算梯度
+            optimizer.step() #优化器更新参数
             if batch_idx % 50 == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
@@ -99,7 +99,7 @@ if __name__ == '__main__':
         print('\nTrain loss:', loss_avg)
         list_loss.append(loss_avg)
 
-    # plot loss
+    # plot loss   此处开始绘图 没有tensorboard方便
     plt.figure()
     plt.plot(range(len(list_loss)), list_loss)
     plt.xlabel('epochs')

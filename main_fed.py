@@ -3,6 +3,8 @@
 # Python version: 3.6
 
 import matplotlib
+from torch.utils.tensorboard import SummaryWriter
+
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import copy
@@ -32,7 +34,7 @@ if __name__ == '__main__':
         if args.iid:
             dict_users = mnist_iid(dataset_train, args.num_users)
         else:
-            dict_users = mnist_noniid(dataset_train, args.num_users)
+            dict_users = mnist_noniid(dataset_train, args.num_users) #non-iid
     elif args.dataset == 'cifar':
         trans_cifar = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
         dataset_train = datasets.CIFAR10('../data/cifar', train=True, download=True, transform=trans_cifar)
@@ -71,18 +73,26 @@ if __name__ == '__main__':
     best_loss = None
     val_acc_list, net_list = [], []
 
+    # 添加tensorboard
+    writer = SummaryWriter("./Fed_train")
+
     if args.all_clients: 
         print("Aggregation over all clients")
-        w_locals = [w_glob for i in range(args.num_users)]
+        w_locals = [w_glob for i in range(args.num_users)] # 列表解析，循环和创建新元素结合
     for iter in range(args.epochs):
         loss_locals = []
         if not args.all_clients:
             w_locals = []
-        m = max(int(args.frac * args.num_users), 1)
-        idxs_users = np.random.choice(range(args.num_users), m, replace=False)
-        for idx in idxs_users:
+        m = max(int(args.frac * args.num_users), 1) # m个用户
+        idxs_users = np.random.choice(range(args.num_users), m, replace=False) # 随机选取m个用户
+        for idx in idxs_users:  # 每个用户本地训练
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users[idx])
-            w, loss = local.train(net=copy.deepcopy(net_glob).to(args.device))
+            w, loss = local.train(net=copy.deepcopy(net_glob).to(args.device)) # copy.deepcopy() 深刻复制，新对象的改变不会导致原来对象的改变
+
+            # 思考能否在聚合前对本地更新的损失做点操作？
+
+
+
             if args.all_clients:
                 w_locals[idx] = copy.deepcopy(w)
             else:
@@ -97,9 +107,10 @@ if __name__ == '__main__':
         # print loss
         loss_avg = sum(loss_locals) / len(loss_locals)
         print('Round {:3d}, Average loss {:.3f}'.format(iter, loss_avg))
+        writer.add_scalar("Fed_train_loss", loss_avg, iter)
         loss_train.append(loss_avg)
 
-    # plot loss curve
+    # plot loss curve   # 绘图
     plt.figure()
     plt.plot(range(len(loss_train)), loss_train)
     plt.ylabel('train_loss')

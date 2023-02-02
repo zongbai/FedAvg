@@ -26,7 +26,7 @@ class DatasetSplit(Dataset):
 class LocalUpdate(object):
     def __init__(self, args, dataset=None, idxs=None):
         self.args = args
-        self.loss_func = nn.CrossEntropyLoss()
+        self.loss_func = nn.CrossEntropyLoss() # 交叉熵损失
         self.selected_clients = []
         self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True)
 
@@ -41,15 +41,15 @@ class LocalUpdate(object):
             for batch_idx, (images, labels) in enumerate(self.ldr_train):
                 images, labels = images.to(self.args.device), labels.to(self.args.device)
                 net.zero_grad()
-                log_probs = net(images)
+                log_probs = net(images)  # 将数据输入模型
                 loss = self.loss_func(log_probs, labels)
-                loss.backward()
-                optimizer.step()
+                loss.backward()  # 反向传播 求梯度
+                optimizer.step() # 更新模型参数
                 if self.args.verbose and batch_idx % 10 == 0:
                     print('Update Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         iter, batch_idx * len(images), len(self.ldr_train.dataset),
                                100. * batch_idx / len(self.ldr_train), loss.item()))
                 batch_loss.append(loss.item())
-            epoch_loss.append(sum(batch_loss)/len(batch_loss))
-        return net.state_dict(), sum(epoch_loss) / len(epoch_loss)
+            epoch_loss.append(sum(batch_loss)/len(batch_loss))  # 每一轮的平均损失
+        return net.state_dict(), sum(epoch_loss) / len(epoch_loss)  # 返回本地的平均损失 和参数状态
 
